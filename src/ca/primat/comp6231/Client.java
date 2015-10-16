@@ -22,15 +22,16 @@ public class Client<T extends Remote> {
 	}
 	
 	/**
-	 * Get the URL to the registry
+	 * Get the default URL of the registry
 	 * 
 	 * @return The URL to the registry
 	 */
-	protected String getRegistryUrl() {
+	protected String getDefaultRegistryUrl() {
 		return "rmi://localhost:" + LocalRegistry.DEFAULT_PORT + "/";
 	}
 
 	/**
+	 * Gets the BankServer object
 	 * 
 	 * @param serverId
 	 * @return
@@ -43,7 +44,7 @@ public class Client<T extends Remote> {
 		}
 
 		T server = null;
-		String url = this.getRegistryUrl() + serverId;
+		String url = this.getDefaultRegistryUrl() + serverId;
 
 		try {
 			System.out.println("Calling registry at : " + url);

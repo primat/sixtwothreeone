@@ -16,7 +16,7 @@ import java.rmi.server.UnicastRemoteObject;
 public class LocalRegistry {
 
 	public static final int DEFAULT_PORT = 2020;
-	
+
 	protected int port;
 	protected Registry reg;
 
@@ -33,6 +33,8 @@ public class LocalRegistry {
 	}
 
 	/**
+	 * Exports a bank server to accept incoming requests on the provided port. 
+	 * It then binds the server to the RMI registry.
 	 * 
 	 * @param bankServer The bank server to export to the registry
 	 * @return
@@ -41,7 +43,7 @@ public class LocalRegistry {
 	 */
 	public Boolean exportAndBind(BankServer bankServer) throws RemoteException, AlreadyBoundException {
 		Remote obj = UnicastRemoteObject.exportObject(bankServer, this.port);
-		this.reg.bind(bankServer.getId(), obj);
+		this.reg.bind(bankServer.bank.getId(), obj);
 		return true;
 	}
 	

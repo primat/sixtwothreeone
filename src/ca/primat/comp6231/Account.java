@@ -12,12 +12,11 @@ public class Account {
 	protected String firstName;
 	protected String lastName;
 	protected String emailAddress;
-	protected int phoneNbr;
+	protected String phoneNbr;
 	protected String password;
-	protected double creditLimit;
+	protected int creditLimit;
 	
-	public Account(int accountNbr, String firstName, String lastName, String emailAddress, int phoneNbr, 
-			String password, double creditLimit) {
+	public Account(int accountNbr, String firstName, String lastName, String emailAddress, String phoneNbr,  String password) {
 		super();
 		this.accountNbr = accountNbr;
 		this.firstName = firstName;
@@ -25,7 +24,7 @@ public class Account {
 		this.emailAddress = emailAddress;
 		this.phoneNbr = phoneNbr;
 		this.password = password;
-		this.creditLimit = creditLimit;
+		this.creditLimit = 1000;
 	}
 
 	public int getAccountNbr() {
@@ -60,11 +59,11 @@ public class Account {
 		this.emailAddress = emailAddress;
 	}
 
-	public int getPhoneNbr() {
+	public String getPhoneNbr() {
 		return phoneNbr;
 	}
 
-	public void setPhoneNbr(int phoneNbr) {
+	public void setPhoneNbr(String phoneNbr) {
 		this.phoneNbr = phoneNbr;
 	}
 
@@ -76,11 +75,11 @@ public class Account {
 		this.password = password;
 	}
 
-	public double getCreditLimit() {
+	public int getCreditLimit() {
 		return creditLimit;
 	}
 
-	public void setCreditLimit(double creditLimit) {
+	public void setCreditLimit(int creditLimit) {
 		this.creditLimit = creditLimit;
 	}
 	

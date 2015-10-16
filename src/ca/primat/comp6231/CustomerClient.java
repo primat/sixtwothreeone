@@ -3,6 +3,9 @@ package ca.primat.comp6231;
 import java.rmi.RemoteException;
 import java.util.Scanner;
 
+import ca.primat.comp6231.response.GetLoanResponse;
+import ca.primat.comp6231.response.OpenAccountResponse;
+
 /**
  * The customer client application
  * 
@@ -11,11 +14,15 @@ import java.util.Scanner;
  */
 public class CustomerClient extends Client<BankServerCustomerInterface> {
 
+	protected static int instances = 0;
+	final protected int id;
+	
 	/**
 	 * Constructor
 	 */
 	public CustomerClient() {
 		super();
+		this.id = ++instances;
 	}
 	
 	public static void showMenu()
@@ -34,11 +41,11 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
 		new CustomerClient();
 		System.out.println("Client connected succesfully");
 		
 		int userChoice = 0;
-		String userInput = "";
 		String requestInput = "Please enter a random string.";
 		Scanner keyboard = new Scanner(System.in);
 		showMenu();
@@ -67,19 +74,16 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 			{
 			case 1: 
 				System.out.println(requestInput);
-				userInput=keyboard.next();
 				//System.out.println(server.testInputText(userInput));
 				showMenu();
 				break;
 			case 2:
 				System.out.println(requestInput);
-				userInput=keyboard.next();
 				//System.out.println(server.reverse(userInput));
 				showMenu();
 				break;
 			case 3:
 				System.out.println(requestInput);
-				userInput=keyboard.next();
 				//System.out.println(server.scramble(userInput));
 				showMenu();
 				break;
@@ -103,19 +107,28 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 	 * @param password
 	 * @return
 	 */
-	public Boolean openAccount(String bank, String firstName, String lastName, String emailAddress, String phoneNumber, String password) {
+	public int openAccount(String bank, String firstName, String lastName, String emailAddress, String phoneNumber, String password) {
 		
 		BankServerCustomerInterface server = this.getBankServer(bank);
 		try {
-			server.openAccount(firstName, lastName, emailAddress, phoneNumber, password);
+			System.out.println("Opening an account at " + bank + " for user " + emailAddress);
+			OpenAccountResponse response = server.openAccount(firstName, lastName, emailAddress, phoneNumber, password);
+			if (response.newAccountNbr > 0) {
+				System.out.println("Account " + emailAddress + " added successfully at bank " + bank);
+			}
+			else {
+				System.out.println("Could not open account " + emailAddress + " at bank " + bank);
+			}
+			return response.newAccountNbr;
 		} catch (RemoteException e) {
-			System.out.println("Remote exception: could not open account");
+			System.out.println("Remote exception: could not open account. Please try again later");
 			//e.printStackTrace();
 		}	
-		return null;
+		return 0;
 	}
-
+	
 	/**
+	 * Request a loan at the given Bank
 	 * 
 	 * @param bank
 	 * @param accountNumber
@@ -123,16 +136,21 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 	 * @param loanAmount
 	 * @return
 	 */
-	public Boolean getLoan(String bank, int accountNumber, String password, double loanAmount) {
+	public GetLoanResponse getLoan(String bank, int accountNumber, String password, int loanAmount) {
 		
 		BankServerCustomerInterface server = this.getBankServer(bank);
 		try {
-			server.getLoan(accountNumber, password, loanAmount);
+			GetLoanResponse response = server.getLoan(accountNumber, password, loanAmount);
+			if (response.newLoanId > 0) {
+				System.out.println("Account " + accountNumber + " successfully got a loan of " + loanAmount + " at bank " + bank);
+			}
+			else {
+				System.out.println("Account " + accountNumber + " was refused a loan of " + loanAmount + " at bank " + bank);
+			}
 		} catch (RemoteException e) {
-			System.out.println("Remote exception: could not open account");
+			System.out.println("Remote exception: could not get a loan. Please try again later");
 			//e.printStackTrace();
 		}	
 		return null;
 	}
-	
 }
