@@ -1,7 +1,11 @@
 package ca.primat.comp6231;
 
+import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.Scanner;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import ca.primat.comp6231.response.GetLoanResponse;
 import ca.primat.comp6231.response.OpenAccountResponse;
@@ -16,6 +20,7 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 
 	protected static int instances = 0;
 	final protected int id;
+	protected Logger logger = null;
 	
 	/**
 	 * Constructor
@@ -23,6 +28,26 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 	public CustomerClient() {
 		super();
 		this.id = ++instances;
+
+		// Set up the logger
+		String textId = "CustomerClient" + this.id;
+		this.logger = Logger.getLogger(textId);
+	    FileHandler fh;  
+
+	    try {
+	        // This block configure the logger with handler and formatter  
+	        fh = new FileHandler(textId + "-log.txt");  
+	        logger.addHandler(fh);
+	        SimpleFormatter formatter = new SimpleFormatter();  
+	        fh.setFormatter(formatter);  
+	        logger.info(textId + " logger started");
+	    } catch (SecurityException e) {  
+	        e.printStackTrace();
+	        System.exit(1);
+	    } catch (IOException e) {  
+	        e.printStackTrace(); 
+	        System.exit(1); 
+	    }  
 	}
 	
 	public static void showMenu()

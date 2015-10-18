@@ -246,6 +246,28 @@ public class Bank {
 		return result;
 	}
 	
+	/**
+	 * Gets the sum of all loans for the given email address (aka username)
+	 * 
+	 * @param emailAddress
+	 * @return
+	 */
+	public int getLoanSum(String emailAddress) {
+		
+		String firstLetter = emailAddress.substring(0, 1).toUpperCase();
+		ThreadSafeHashMap<Integer, Loan> loansByLetter = this.loans.get(firstLetter);
+		
+		int result = 0;
+		Date now = Calendar.getInstance().getTime();
+		for (Integer loanId : loansByLetter.keySet()) {
+			Loan loan = loansByLetter.get(loanId);
+			if (loan.emailAddress == emailAddress && now.before(loan.dueDate)) {
+				result += loan.amount;
+			}
+		}
+		return result;
+	}
+	
 	//
 	// Getters and setters
 	//
@@ -257,6 +279,14 @@ public class Bank {
 	 */
 	public String getId() {
 		return this.id;
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public String getTextId() {
+		return "Bank-" + this.getId();
 	}
 
 }

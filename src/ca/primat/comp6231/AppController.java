@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import ca.primat.comp6231.response.GetLoanResponse;
 import ca.primat.comp6231.response.OpenAccountResponse;
 
 /**
@@ -54,13 +55,40 @@ public class AppController {
 		//this.bindAndExportBankServers();
 		
 		
+		
+		
+//		try {
+//			Thread.sleep(1000);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		GetLoanResponse resp = null;
+//		try {
+//			resp = this.bankServer1.getLoan(100, "jondoe", 100);
+//			System.out.println("Message: " + resp.message);
+//		} catch (RemoteException e) {
+//			System.out.println("Failed to initialize loans");
+//			e.printStackTrace();
+//		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 		// Create a few customer clients in their own threads
 //		final Thread t1 = new Thread() {
 //			@Override
 //			public void run() {
 //				System.out.println("Starting customer client #1");
 //				cust1 = new CustomerClient();
-//				cust1.com("rbc", true);
 //			}
 //		};
 //		final Thread t2 = new Thread() {
@@ -179,14 +207,22 @@ public class AppController {
 			System.out.println("Failed to initialize bank accounts");
 			e.printStackTrace();
 		}
-		
+
+
 		try {
-			this.bankServer1.getLoan(oaResp1_1.accountNbr, "jondoe", 100);
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		GetLoanResponse resp = null;
+		try {
+			resp = this.bankServer1.getLoan(oaResp1_1.accountNbr, "jondoe", 100);
+			System.out.println("Message: " + resp.message);
 		} catch (RemoteException e) {
 			System.out.println("Failed to initialize loans");
 			e.printStackTrace();
 		}
-		
 	}
 
 	/**

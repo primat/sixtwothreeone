@@ -136,7 +136,6 @@ public class BankUdpPeer {
 		DatagramSocket aSocket = null;
 		
 		try {
-			//aSocket = new DatagramSocket(this.port, this.localIpAddress);
 			aSocket = new DatagramSocket(this.port);
 			byte[] receiveData = new byte[1024];
 			byte[] sendData = new byte[1024];
@@ -198,7 +197,7 @@ public class BankUdpPeer {
 			}
 
 		} catch (final SocketException ex) {
-			System.out.println("UDP Port " + this.port + " is occupied.");
+			System.out.println("UDP Port " + this.port + " is already in use.");
 			System.exit(1);
 		} catch (final IOException e) {
 			e.printStackTrace();

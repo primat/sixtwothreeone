@@ -1,5 +1,6 @@
 package ca.primat.comp6231;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.rmi.RemoteException;
 import java.util.Date;
@@ -11,6 +12,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.logging.Logger;
+import java.util.logging.FileHandler;
+import java.util.logging.SimpleFormatter;
 
 import ca.primat.comp6231.response.GetLoanResponse;
 import ca.primat.comp6231.response.OpenAccountResponse;
@@ -28,6 +32,7 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	protected volatile Bank bank;
 	protected volatile HashMap<String, Bank> bankCollection;
 	protected int sequenceNbr = 1;
+	protected Logger logger = null;
 	
 	/**
 	 * Constructor - Use inversion of control so that we manage creation of dependencies outside this class
@@ -42,12 +47,29 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 		this.bankCollection = bankCollection;
 		this.bank = bankCollection.get(bankId);
 		this.lockObject = lockObject;
-		
-		BankUdpListener udpPeer = new BankUdpListener(this.bank);
+
+		// Set up the logger
+		this.logger = Logger.getLogger(this.bank.getTextId());  
+	    FileHandler fh;  
+	    try {
+	        fh = new FileHandler(this.bank.getTextId() + "-log.txt");  
+	        logger.addHandler(fh);
+	        SimpleFormatter formatter = new SimpleFormatter();  
+	        fh.setFormatter(formatter);  
+	        logger.info(this.bank.getTextId() + " logger started");  
+	    } catch (SecurityException e) {  
+	        e.printStackTrace();
+	        System.exit(1);
+	    } catch (IOException e) {  
+	        e.printStackTrace(); 
+	        System.exit(1); 
+	    }
+
+		BankUdpListener udpPeer = new BankUdpListener(this.bank, this.logger);
 		Thread udpPeerThread = new Thread(udpPeer);
 		udpPeerThread.start();
 	}
-	 
+	
 	//
 	// Operation performed by Customers
 	//
@@ -55,72 +77,96 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	@Override
 	public GetLoanResponse getLoan(int accountNbr, String password, int loanAmount) throws RemoteException {
 
-		// Validate that the account exists
-		Account account = this.bank.authenticateAccount(accountNbr, password);
-		if (account == null) {
-			return new GetLoanResponse(false, "", "Account " + accountNbr + " does not exist at bank " + this.bank.getId(), 0);
-		}
+		synchronized (lockObject) {
 
-		// Validate that passwords match
-		if (account.getPassword() != password) {
-			return new GetLoanResponse(false, "", "Invalid credentials. Loan refused at bank " + this.bank.getId(), 0);
-		}
-		
-		// Avoid making UDP requests if the loan amount is already bigger than the credit limit of the local account
-		int currentLoanAmount = this.bank.getLoanSum(accountNbr);
-		if (currentLoanAmount +  loanAmount > account.getCreditLimit()) {
-			return new GetLoanResponse(false, "", "Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded", 0);
-		}
-		
-		// Get the loan sum for all banks and approve or not the new loan
-		ExecutorService pool = Executors.newFixedThreadPool(this.bankCollection.size()-1);
-	    Set<Future<LoanRequestStatus>> set = new HashSet<Future<LoanRequestStatus>>();
-	    for (Bank destinationBank : this.bankCollection.values()) {
-	    	if (this.bank != destinationBank) {
-				Callable<LoanRequestStatus> callable = new UdpRequesterCallable(this.bank, destinationBank, account.emailAddress, this.sequenceNbr);
-				Future<LoanRequestStatus> future = pool.submit(callable);
-				set.add(future);
-			}
-		}
-
-		int extLoanSum = 0;
-		for (Future<LoanRequestStatus> future : set) {
-			
-			try {
-				LoanRequestStatus status = future.get();
-				if (status.status == LoanRequestStatus.STATUS_SUCCESS) {
-					extLoanSum += status.loanSum;
-				}
-				else {
-					System.out.println(status.message);
-					return new GetLoanResponse(false, "", status.message, 0);
-				}
-			} catch (InterruptedException e) {
-				System.out.println("Bank " + this.bank.getId() + " loan request failed. InterruptedException");
-				e.printStackTrace();
-				return new GetLoanResponse(false, "", "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". InterruptedException", 0);
-			} catch (ExecutionException e) {
-				System.out.println("Bank " + this.bank.getId() + " loan request failed. ExecutionException");
-				e.printStackTrace();
-				return new GetLoanResponse(false, "", "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". ExecutionException", 0);
-			}
-		}
-		this.sequenceNbr++;
-		
-		// Check if all operations were successful
-		if (currentLoanAmount + extLoanSum > account.getCreditLimit()) {
-			return new GetLoanResponse(false, "", "Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded", 0);
-		}
+			logger.info("-------------------------------");
+			logger.info(this.bank.getTextId() + ": Client invoked getLoan(accountNbr:" + accountNbr + ", password:" + password + ", loanAmount:" + loanAmount + ")");
 	
-		this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
+			// Validate that the account exists
+			Account account = this.bank.authenticateAccount(accountNbr, password);
+			if (account == null) {
+				logger.info(this.bank.getTextId() + ": Account " + accountNbr + " does not exist at bank " + this.bank.getId());
+				return new GetLoanResponse(false, "Account " + accountNbr + " does not exist at bank " + this.bank.getId(), "", 0);
+			}
+	
+			// Validate that passwords match
+			if (account.getPassword() != password) {
+				logger.info(this.bank.getTextId() + ": Invalid credentials. Loan refused at bank " + this.bank.getId());
+				return new GetLoanResponse(false, "Invalid credentials. Loan refused at bank " + this.bank.getId(), "", 0);
+			}
+	
+			// Avoid making UDP requests if the loan amount is already bigger than the credit limit of the local account
+			int currentLoanAmount = this.bank.getLoanSum(accountNbr);
+			if (currentLoanAmount +  loanAmount > account.getCreditLimit()) {
+				logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded");
+				return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded", "", 0);
+			}
+			
+			// Get the loan sum for all banks and approve or not the new loan
+			ExecutorService pool = Executors.newFixedThreadPool(this.bankCollection.size()-1);
+		    Set<Future<LoanRequestStatus>> set = new HashSet<Future<LoanRequestStatus>>();
+		    for (Bank destinationBank : this.bankCollection.values()) {
+		    	if (this.bank != destinationBank) {
+
+					Callable<LoanRequestStatus> callable = new UdpRequesterCallable(this.bank, destinationBank, account.emailAddress, this.sequenceNbr, this.logger);
+					Future<LoanRequestStatus> future = pool.submit(callable);
+					set.add(future);
+				}
+			}
+	
+			int extLoanSum = 0;
+			for (Future<LoanRequestStatus> future : set) {
+	
+				try {
+					LoanRequestStatus status = future.get();
+					if (status == null) {
+	
+					}
+					else if (status.status == LoanRequestStatus.STATUS_SUCCESS) {
+						extLoanSum += status.loanSum;
+					}
+					else {
+						System.out.println(status.message);
+						return new GetLoanResponse(false, status.message, "", 0);
+					}
+				} catch (InterruptedException e) {
+					System.out.println("Bank " + this.bank.getId() + " loan request failed. InterruptedException");
+					e.printStackTrace();
+					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". InterruptedException", "", 0);
+				} catch (ExecutionException e) {
+					System.out.println("Bank " + this.bank.getId() + " loan request failed. ExecutionException");
+					e.printStackTrace();
+					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". ExecutionException", "", 0);
+				}
+			}
+			this.sequenceNbr++;
+			
+			// Check if all operations were successful
+			if (currentLoanAmount + extLoanSum > account.getCreditLimit()) {
+				return new GetLoanResponse(false, "", "Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded", 0);
+			}
+		
+			this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
+		}
 
 		return new GetLoanResponse(true, "", "Loan approved at bank " + this.bank.getId() + ".", 0);
 	}
-	
+
 	@Override
 	public OpenAccountResponse openAccount(String firstName, String lastName, String emailAddress, String phoneNumber, String password) throws RemoteException {
 
-		return this.bank.createAccount(firstName, lastName, emailAddress, phoneNumber, password);
+		logger.info("-------------------------------");
+		logger.info(this.bank.getTextId() + ": Client invoked openAccount(emailAddress:" + emailAddress + ")");
+
+		OpenAccountResponse resp = this.bank.createAccount(firstName, lastName, emailAddress, phoneNumber, password);
+	
+		if (resp.result) {
+			logger.info(this.bank.getTextId() + " successfully opened an account for user " + emailAddress);
+		}
+		else {
+			logger.info(this.bank.getTextId() + " failed to open an account for user " + emailAddress);
+		}
+		return resp;
 	}
 
 	//
@@ -130,24 +176,33 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	@Override
 	public ServerResponse delayPayment(int loanId, Date currentDueDate, Date newDueDate) throws RemoteException {
 
-		Loan loan = this.bank.getLoanById(loanId);
-		if (loan == null) {
-			return new ServerResponse(false, "", "Loan id " + loanId + " does not exist");
+		synchronized (lockObject) {
+
+			logger.info("-------------------------------");
+			logger.info(this.bank.getTextId() + ": Client invoked delayPayment(loanId:" + loanId + ")");
+			
+			Loan loan = this.bank.getLoanById(loanId);
+			if (loan == null) {
+				return new ServerResponse(false, "", "Loan id " + loanId + " does not exist");
+			}
+			if (!loan.dueDate.equals(currentDueDate)) {
+				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDate argument mismatch");
+			}
+			if (!loan.dueDate.before(currentDueDate)) {
+				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
+			}
+			
+			loan.setDueDate(newDueDate);
 		}
-		if (!loan.dueDate.equals(currentDueDate)) {
-			return new ServerResponse(false, "", "Loan id " + loanId + " - currentDate argument mismatch");
-		}
-		if (!loan.dueDate.before(currentDueDate)) {
-			return new ServerResponse(false, "", "Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
-		}
-		
-		loan.setDueDate(newDueDate);
 		
 		return new ServerResponse(true, "", "Loan successfully delayed");
 	}
 
 	@Override
 	public String printCustomerInfo() throws RemoteException {
+
+		logger.info("-------------------------------");
+		logger.info(this.bank.getTextId() + ": Client invoked printCustomerInfo()");
 		
 		for (String key : this.bank.accounts.keySet()) {
 			ThreadSafeHashMap<Integer, Account> accountsByLetter = this.bank.accounts.get(key);
@@ -161,22 +216,22 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 		return null;
 	}
 	
-	/**
-	 * Get the addresses of banks other than this one
-	 * @return
-	 */
-	protected Set<InetSocketAddress> getPeerAddresses() {
-		
-		Set<InetSocketAddress> peerAddresses = new HashSet<InetSocketAddress>();
-		
-		for(Bank bankObj : bankCollection.values()) {
-		    if (bankObj.udpAddress != this.bank.udpAddress) {
-		    	peerAddresses.add(bankObj.udpAddress);
-		    }
-		}
-		
-		return peerAddresses;
-	}
+//	/**
+//	 * Get the addresses of banks other than this one
+//	 * @return
+//	 */
+//	protected Set<InetSocketAddress> getPeerAddresses() {
+//		
+//		Set<InetSocketAddress> peerAddresses = new HashSet<InetSocketAddress>();
+//		
+//		for(Bank bankObj : bankCollection.values()) {
+//		    if (bankObj.udpAddress != this.bank.udpAddress) {
+//		    	peerAddresses.add(bankObj.udpAddress);
+//		    }
+//		}
+//		
+//		return peerAddresses;
+//	}
 
 	
 	
@@ -257,6 +312,5 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 //		
 //		return 100;
 //	}
-	
-	
+
 }
