@@ -8,7 +8,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 /**
- * Wrapper over the RMI registry
+ * Wrapper over the RMI registry methods
  * 
  * @author mat
  *
@@ -33,8 +33,8 @@ public class LocalRegistry {
 	}
 
 	/**
-	 * Exports a bank server to accept incoming requests on the provided port. 
-	 * It then binds the server to the RMI registry.
+	 * Exports a bank server to accept incoming requests on the provided port. It then binds the server 
+	 * to the RMI registry.
 	 * 
 	 * @param bankServer The bank server to export to the registry
 	 * @return
@@ -54,9 +54,4 @@ public class LocalRegistry {
 	public int getPort() {
 		return port;
 	}
-	
-	public int addServer() {
-		return port;
-	}
-	
 }

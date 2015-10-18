@@ -9,11 +9,12 @@ import java.util.Date;
  *
  */
 public class Loan {
-	
-	protected int accountNbr; // Foreign key
+
+	protected int accountNbr;
+	protected String emailAddress;
 	protected int amount;
 	protected Date dueDate;
-	protected int id; // Primary key
+	protected int id;
 	
 	/**
 	 * Constructor
@@ -23,9 +24,10 @@ public class Loan {
 	 * @param dueDate The due date of the loan
 	 * @param id the id of this loan
 	 */
-	public Loan(int accountNbr, int amount, Date dueDate, int id) {
+	public Loan(int accountNbr, String emailAddress, int amount, Date dueDate, int id) {
 		super();
 		this.accountNbr = accountNbr;
+		this.emailAddress = emailAddress;
 		this.amount = amount;
 		this.dueDate = dueDate;
 		this.id = id;
@@ -51,4 +53,9 @@ public class Loan {
 		this.dueDate = dueDate;
 	}
 
+	public String getEmailAddress() {
+		return emailAddress;
+	}
+
+	
 }

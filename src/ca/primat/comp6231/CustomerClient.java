@@ -113,13 +113,13 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 		try {
 			System.out.println("Opening an account at " + bank + " for user " + emailAddress);
 			OpenAccountResponse response = server.openAccount(firstName, lastName, emailAddress, phoneNumber, password);
-			if (response.newAccountNbr > 0) {
+			if (response.accountNbr > 0) {
 				System.out.println("Account " + emailAddress + " added successfully at bank " + bank);
 			}
 			else {
 				System.out.println("Could not open account " + emailAddress + " at bank " + bank);
 			}
-			return response.newAccountNbr;
+			return response.accountNbr;
 		} catch (RemoteException e) {
 			System.out.println("Remote exception: could not open account. Please try again later");
 			//e.printStackTrace();

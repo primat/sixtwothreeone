@@ -1,10 +1,14 @@
 package ca.primat.comp6231;
 
 import java.net.InetSocketAddress;
+import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
+import ca.primat.comp6231.response.OpenAccountResponse;
 
 /**
  * Main launcher class for the comp6231 assignment #1
@@ -27,6 +31,8 @@ public class AppController {
 	private ManagerClient man4;
 	private LocalRegistry registry;
 	
+	final private Object commonLock = new Object();
+	
 	/**
 	 * The application launcher
 	 * 
@@ -40,11 +46,13 @@ public class AppController {
 	 * Use the AppController constructor to choose a scenario to run
 	 */
 	public AppController() {
+		
 		super();
-
 		this.createRmiRegistry();
 		this.createBanks();
 		this.initBankData();
+		//this.bindAndExportBankServers();
+		
 		
 		// Create a few customer clients in their own threads
 //		final Thread t1 = new Thread() {
@@ -112,24 +120,72 @@ public class AppController {
 	}
 	
 	/**
+	 * Prepares the BankServers to be used for RMI
+	 */
+	private void bindAndExportBankServers() {
+		
+		try {
+			this.registry.exportAndBind(this.bankServer1);
+		} catch (RemoteException e) {
+			System.out.println("Error: Remote exception while exporting and binding the bank server.");
+			e.printStackTrace();
+			System.exit(1);
+		} catch (AlreadyBoundException e) {
+			System.out.println("Error: Trying to bind server " + this.bankServer1.bank.getId() + " to the registry but it is already bound.");
+		}
+
+		try {
+			this.registry.exportAndBind(this.bankServer2);
+		} catch (RemoteException e) {
+			System.out.println("Error: Remote exception while exporting and binding the bank server.");
+			e.printStackTrace();
+			System.exit(1);
+		} catch (AlreadyBoundException e) {
+			System.out.println("Error: Trying to bind server " + this.bankServer2.bank.getId() + " to the registry but it is already bound.");
+		}
+
+		try {
+			this.registry.exportAndBind(this.bankServer3);
+		} catch (RemoteException e) {
+			System.out.println("Error: Remote exception while exporting and binding the bank server.");
+			e.printStackTrace();
+			System.exit(1);
+		} catch (AlreadyBoundException e) {
+			System.out.println("Error: Trying to bind server " + this.bankServer3.bank.getId() + " to the registry but it is already bound.");
+		}
+	}
+	
+	/**
 	 * Initialize the bank data
 	 */
 	private void initBankData() {
 		
+		OpenAccountResponse oaResp1_1 = null;
+		
 		// Prepopulate records in the banks
-		this.bankServer1.openAccount("John", "Doe", "rbccustomer1@gmail.com", "15145145145", "jondoe");
-		this.bankServer1.openAccount("Sarah", "Conor", "rbccustomer2@gmail.com", "15145145144", "sarahconor");
-		this.bankServer1.openAccount("Kyle", "Reese", "kylereese@gmail.com", "15145145143", "kylereese");
+		try {
+			oaResp1_1 = this.bankServer1.openAccount("John", "Doe", "rbccustomer1@gmail.com", "15145145145", "jondoe");
+			this.bankServer1.openAccount("Sarah", "Conor", "rbccustomer2@gmail.com", "15145145144", "sarahconor");
+			this.bankServer1.openAccount("Kyle", "Reese", "kylereese@gmail.com", "15145145143", "kylereese");
+			
+			this.bankServer2.openAccount("Vincent", "Vega", "cibccustomer1@gmail.com", "15145145155", "vincentvega");
+			this.bankServer2.openAccount("Jules", "Winnfield", "cibccustomer2@gmail.com", "15145145144", "juleswinnfield");
+			this.bankServer2.openAccount("Mia", "Wallace", "miawallace@gmail.com", "15145145163", "miawallace");
+	
+			this.bankServer3.openAccount("Charles", "Xavier", "bmocustomer1@gmail.com", "15145145145", "charlesxavier");
+			this.bankServer3.openAccount("Lois", "Lane", "bmocustomer2@gmail.com", "15145145244", "loislane");
+			this.bankServer3.openAccount("Elanor", "Gamgee", "elanorgamgee@gmail.com", "15145145343", "elanorgamgee");
+		} catch (RemoteException e) {
+			System.out.println("Failed to initialize bank accounts");
+			e.printStackTrace();
+		}
 		
-		this.bankServer2.openAccount("Vincent", "Vega", "cibccustomer1@gmail.com", "15145145155", "vincentvega");
-		this.bankServer2.openAccount("Jules", "Winnfield", "cibccustomer2@gmail.com", "15145145144", "juleswinnfield");
-		this.bankServer2.openAccount("Mia", "Wallace", "miawallace@gmail.com", "15145145163", "miawallace");
-
-		this.bankServer3.openAccount("Charles", "Xavier", "bmocustomer1@gmail.com", "15145145145", "charlesxavier");
-		this.bankServer3.openAccount("Lois", "Lane", "bmocustomer2@gmail.com", "15145145244", "loislane");
-		this.bankServer3.openAccount("Elanor", "Gamgee", "elanorgamgee@gmail.com", "15145145343", "elanorgamgee");
-		
-		//this.bankServer3.bank.getLoan(accountNumber, amount, dueDate);
+		try {
+			this.bankServer1.getLoan(oaResp1_1.accountNbr, "jondoe", 100);
+		} catch (RemoteException e) {
+			System.out.println("Failed to initialize loans");
+			e.printStackTrace();
+		}
 		
 	}
 
@@ -149,12 +205,12 @@ public class AppController {
 		bankCollection.put(bank3.id, bank3);
 		
 		// Create the three bank servers - one for each Bank
-		this.bankServer1 = new BankServer(this.registry, bankCollection, bank1.id);
-		System.out.println("Server " + bankServer1.bank.getId() + " started and bound to the registry");
-		this.bankServer2 = new BankServer(this.registry, bankCollection, bank2.id);
-		System.out.println("Server " + bankServer2.bank.getId() + " started and bound to the registry");
-		this.bankServer3 = new BankServer(this.registry, bankCollection, bank3.id);
-		System.out.println("Server " + bankServer3.bank.getId() + " started and bound to the registry");
+		this.bankServer1 = new BankServer(bankCollection, bank1.id, commonLock);
+		System.out.println("BankServer " + bankServer1.bank.getId() + " started and bound to the registry");
+		this.bankServer2 = new BankServer(bankCollection, bank2.id, commonLock);
+		System.out.println("BankServer " + bankServer2.bank.getId() + " started and bound to the registry");
+		this.bankServer3 = new BankServer(bankCollection, bank3.id, commonLock);
+		System.out.println("BankServer " + bankServer3.bank.getId() + " started and bound to the registry");
 	}
 
 	/**

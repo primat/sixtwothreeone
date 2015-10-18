@@ -2,7 +2,7 @@ package ca.primat.comp6231.response;
 
 public class OpenAccountResponse extends ServerResponse {
 
-	final public int newAccountNbr;
+	final public int accountNbr;
 	
 	/**
 	 * Constructor
@@ -10,11 +10,11 @@ public class OpenAccountResponse extends ServerResponse {
 	 * @param result
 	 * @param message
 	 * @param debugMessage
-	 * @param newAccountNbr
+	 * @param accountNbr
 	 */
-	public OpenAccountResponse(final Boolean result, final String message, final String debugMessage, final int newAccountNbr) {
+	public OpenAccountResponse(final Boolean result, final String message, final String debugMessage, final int accountNbr) {
 		
 		super(result, message, debugMessage);
-		this.newAccountNbr = newAccountNbr;
+		this.accountNbr = accountNbr;
 	}
 }

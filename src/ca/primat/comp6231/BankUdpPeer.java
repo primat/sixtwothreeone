@@ -1,6 +1,10 @@
 package ca.primat.comp6231;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -142,8 +146,6 @@ public class BankUdpPeer {
 				final DatagramPacket receivedPacket;
 				final InetAddress remoteIpAddress;
 				final int remotePort;
-				final String sentence;
-				final String capitalizedSentence;
 				
 				// Wait for and receive a packet
 				receiveData = new byte[1024];
@@ -157,12 +159,40 @@ public class BankUdpPeer {
 				System.out.println("Received packet from: " + remoteIpAddress + ":" + remotePort);
 				
 				// Extract the receiver's message
-				sentence = new String(receivedPacket.getData());
-				System.out.println("Message: " + sentence);
+				ByteArrayInputStream bais = new ByteArrayInputStream(receivedPacket.getData());
+	            ObjectInputStream ois = new ObjectInputStream(bais);
+	            Object obj;
+				try {
+					obj = ois.readObject();
+				} catch (ClassNotFoundException e) {
+					System.out.println("Received an invalid packet");
+					continue;
+				}
+	            bais.close();
+	            ois.close();
+	            MessageRequestLoan req = null;
+	            
+				if (obj instanceof MessageRequestLoan) {
+					System.out.println("Loan Request");
+					req = (MessageRequestLoan) obj;
+				} else {
+					System.out.println("Not a loan request");
+					continue;
+				}
+
+	            MessageResponseLoan resp = new MessageResponseLoan();
+	            resp.sequenceNbr = req.sequenceNbr;
+	            resp.amountAvailable = 100;
+
+				System.out.println("Received loan request for user : " + req.emailAddress);
 				
-				// Process the message and send it back to the peer
-				capitalizedSentence = sentence.toUpperCase();
-				sendData = capitalizedSentence.getBytes();
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		        ObjectOutputStream oos = new ObjectOutputStream(baos);
+		        oos.writeObject(resp);
+				sendData = baos.toByteArray();
+				baos.close();
+	            oos.close();
+				
 				final DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, remoteIpAddress, remotePort);
 				aSocket.send(sendPacket);
 			}
