@@ -87,7 +87,7 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 		BankServerManagerInterface server = this.getBankServer(bank);
 		try {
 			String result = server.printCustomerInfo();
-			logger.info(this.getTextId() + ": " + result);
+			logger.info(this.getTextId() + ": Bank-" + bank + "\n" + result);
 			
 		} catch (RemoteException e) {
 			System.out.println("Remote exception: could not print customer info");
@@ -101,8 +101,7 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 	 * @return
 	 */
 	protected String getTextId() {
-		
-		return "CustomerClient-" + this.id;
+		return "ManagerClient-" + this.id;
 	}
 	
 }

@@ -77,12 +77,12 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	public GetLoanResponse getLoan(int accountNbr, String password, int loanAmount) throws RemoteException {
 
 		int newLoanId = 0;
-		
-		synchronized (lockObject) {
 
-			logger.info("-------------------------------");
-			logger.info(this.bank.getTextId() + ": Client invoked getLoan(accountNbr:" + accountNbr + ", password:" + password + ", loanAmount:" + loanAmount + ")");
-	
+		logger.info("-------------------------------");
+		logger.info(this.bank.getTextId() + ": Client invoked getLoan(accountNbr:" + accountNbr + ", password:" + password + ", loanAmount:" + loanAmount + ")");
+			
+		synchronized (lockObject) {
+			
 			// Test the existence of the account
 			Account account = this.bank.getAccount(accountNbr);
 			if (account == null) {
@@ -228,8 +228,7 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 				result += loan.toString() + "\n";
 			}
 		}
-
-		System.out.println(result);
+		//System.out.println(result);
 		return result;
 	}
 }

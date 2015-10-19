@@ -53,16 +53,19 @@ public class AppController {
 		this.bindAndExportBankServers();
 
 		// Run individual tests
-		//this.test1();
-		this.test2();
-		//this.test3();
-		//this.test4();
-		//...
+		// Test the OpenAccount operation
+		this.test1();
 		
+		// Test the GetLoan operation
+		//this.test2();
+		
+		// Test the DelayPayment Operation
+		//this.test3();
+
 	}
 	
 	/**
-	 * Test method #1
+	 * Test method #1 - Tests concurrency for OpenAccount operation
 	 * 
 	 * @throws InterruptedException
 	 */
@@ -85,20 +88,27 @@ public class AppController {
 			@Override
 			public void run() {
 				cust2 = new CustomerClient();
+				cust2.openAccount("cibc", "Vincent", "Vega", "vincentvega@gmail.com", "15145145155", "vincentvega");
+				int accNbr1 = cust2.openAccount("bmo", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
 				cust2.openAccount("rbc", "Sarah", "Conor", "sarahconor@gmail.com", "15145145144", "sarahconor");
 				cust2.openAccount("bmo", "Lois", "Lane", "loislane@gmail.com", "15145145244", "loislane");
 				cust2.openAccount("cibc", "Jules", "Winnfield", "juleswinnfield@gmail.com", "15145145144", "juleswinnfield");
+
+				// Add a loan for user jondoe@gmail.com at bank "bmo"
+				cust2.getLoan("bmo", accNbr1, "jondoe", 700);
 			}
 		};
 		final Thread tc3 = new Thread() {
 			@Override
 			public void run() {
 				cust3 = new CustomerClient();
+				cust3.openAccount("cibc", "Vincent", "Vega", "vincentvega@gmail.com", "15145145155", "vincentvega");
+				int accNbr1 = cust3.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
 				cust3.openAccount("rbc", "Kyle", "Reese", "kylereese@gmail.com", "15145145163", "kylereese");
 				cust3.openAccount("bmo", "Elanor", "Gamgee", "elanorgamgee@gmail.com", "15145145343", "elanorgamgee");
-				int accNbr1 = cust3.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				cust3.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
 				
-				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				// Add a loan for user jondoe@gmail.com at bank "cibc"
 				cust1.getLoan("cibc", accNbr1, "jondoe", 600);
 			}
 		};
@@ -118,19 +128,18 @@ public class AppController {
 			}
 		};
 
-		Thread.sleep(1000);
-		tm1.start();
-
 		// Wait for all threads to complete before proceeding and clear bank data
 		tc1.join();
 		tc2.join();
 		tc3.join();
+		
+		tm1.start();
 		tm1.join();
 		this.clearBankData();
 	}
 	
 	/**
-	 * Test method #2
+	 * Test method #2 - Tests concurrency for getLoan operation
 	 * 
 	 * @throws InterruptedException
 	 */
@@ -147,6 +156,16 @@ public class AppController {
 			}
 		};
 
+		final Thread tc2 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr2 = cust.openAccount("bmo", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("cibc", accNbr2, "jondoe", 700);
+			}
+		};
+
 		final Thread tc3 = new Thread() {
 			@Override
 			public void run() {
@@ -158,6 +177,7 @@ public class AppController {
 		};
 
 		tc1.start();
+		tc2.start();
 		tc3.start();
 
 		final Thread tm1 = new Thread() {
@@ -166,11 +186,77 @@ public class AppController {
 				//System.out.println("Starting manager client #1");
 				man1 = new ManagerClient();
 				man1.printCustomerInfo("rbc");
+				man1.printCustomerInfo("bmo");
 				man1.printCustomerInfo("cibc");
 			}
 		};
 
 		// Wait for all threads to complete before proceeding and clear bank data
+		tc1.join();
+		tc1.join();
+		tc3.join();
+
+		tm1.start();
+		tm1.join();
+		
+		this.clearBankData();
+	}
+
+	/**
+	 * Test method #2 - Tests concurrency for DelayPayment operation
+	 * 
+	 * @throws InterruptedException
+	 */
+	protected void test3() throws InterruptedException {
+
+		// Create a few customer clients in their own threads and make them do some operations
+		final Thread tc1 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr1 = cust.openAccount("rbc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("rbc", accNbr1, "jondoe", 500);
+			}
+		};
+
+		final Thread tc2 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr2 = cust.openAccount("bmo", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("cibc", accNbr2, "jondoe", 700);
+			}
+		};
+
+		final Thread tc3 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr2 = cust.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("cibc", accNbr2, "jondoe", 600);
+			}
+		};
+
+		tc1.start();
+		tc2.start();
+		tc3.start();
+
+		final Thread tm1 = new Thread() {
+			@Override
+			public void run() {
+				//System.out.println("Starting manager client #1");
+				man1 = new ManagerClient();
+				man1.printCustomerInfo("rbc");
+				man1.printCustomerInfo("bmo");
+				man1.printCustomerInfo("cibc");
+			}
+		};
+
+		// Wait for all threads to complete before proceeding and clear bank data
+		tc1.join();
 		tc1.join();
 		tc3.join();
 

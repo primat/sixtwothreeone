@@ -117,11 +117,11 @@ public class Bank {
 
 		// Synchronize on the accounts list to get sightly better performance
 		synchronized (accounts) {
-			
+
 			// Check if there is already an account with that email address
 			for (Integer accNbr : accounts.keySet()) {
 				Account account = accounts.get(accNbr);
-				if (account.emailAddress == emailAddress) {
+				if (account.emailAddress.equals(emailAddress)) {
 					return new OpenAccountResponse(false, "", "The account " + emailAddress + " already exists at bank" + this.getId(), account.accountNbr);
 				}
 			}

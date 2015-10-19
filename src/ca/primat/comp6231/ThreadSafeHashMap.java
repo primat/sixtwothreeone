@@ -11,7 +11,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * HashMap wrapper class for threaded applications
  * 
  * @author mat
- *
+ * 
  */
 public class ThreadSafeHashMap<K, V> {
 
