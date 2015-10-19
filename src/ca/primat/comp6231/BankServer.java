@@ -189,19 +189,23 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 			
 			Loan loan = this.bank.getLoanById(loanId);
 			if (loan == null) {
+				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " does not exist");
 				return new ServerResponse(false, "", "Loan id " + loanId + " does not exist");
 			}
-			if (!loan.dueDate.equals(currentDueDate)) {
-				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDate argument mismatch");
-			}
-			if (!loan.dueDate.before(currentDueDate)) {
-				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
+//			if (!loan.dueDate.equals(currentDueDate)) {
+//				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " does not exist");
+//				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDate argument mismatch");
+//			}
+			if (!loan.dueDate.before(newDueDate)) {
+				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
+				return new ServerResponse(false, "", " Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
 			}
 			
 			loan.setDueDate(newDueDate);
 		}
-		
-		return new ServerResponse(true, "", "Loan successfully delayed");
+
+		logger.info(this.bank.getTextId() + " loan " + loanId + " successfully delayed");
+		return new ServerResponse(true, this.bank.getTextId() + " loan " + loanId + " successfully delayed", "");
 	}
 
 	@Override

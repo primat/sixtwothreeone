@@ -1,9 +1,15 @@
 package ca.primat.comp6231.response;
 
+import java.io.Serializable;
+
 import ca.primat.comp6231.BankServerResponseInterface;
 
-public class ServerResponse implements BankServerResponseInterface {
+public class ServerResponse implements BankServerResponseInterface, Serializable {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	public Boolean result;
 	public String message;
 	public String debugMessage;

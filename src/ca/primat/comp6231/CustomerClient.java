@@ -97,6 +97,7 @@ public class CustomerClient extends Client<BankServerCustomerInterface> {
 			System.out.println(response);
 			if (response.newLoanId > 0) {
 			    logger.info(this.getTextId() + ": Account " + accountNumber + " successfully got a loan of " + loanAmount + " at bank " + bank + " with loanId " + response.newLoanId);
+				return response;
 			}
 			else {
 			    logger.info(this.getTextId() + ": Account " + accountNumber + " was refused a loan of " + loanAmount + " at bank " + bank);

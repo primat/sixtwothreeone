@@ -70,9 +70,10 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 		BankServerManagerInterface server = this.getBankServer(bank);
 		try {
 			ServerResponse response = server.delayPayment(loanId, currentDueDate, NewDueDate);
-			logger.info(this.getTextId() + ": " + response);
+			logger.info(this.getTextId() + ": " + response.message);
 		} catch (RemoteException e) {
 			System.out.println("Remote exception: could not delay payment");
+			logger.info(this.getTextId() + ": Remote exception: could not delay payment");
 			e.printStackTrace();
 		}	
 		return null;

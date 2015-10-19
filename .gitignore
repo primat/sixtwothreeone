@@ -2,3 +2,7 @@
 .project
 .classpath
 security.policy
+.settings
+/Bank*
+/Customer*
+/Manager*

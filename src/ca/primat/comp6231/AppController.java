@@ -3,6 +3,8 @@ package ca.primat.comp6231;
 import java.net.InetSocketAddress;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 
 import ca.primat.comp6231.response.GetLoanResponse;
@@ -54,13 +56,16 @@ public class AppController {
 
 		// Run individual tests
 		// Test the OpenAccount operation
-		this.test1();
+		//this.test1();
 		
 		// Test the GetLoan operation
-		//this.test2();
-		
+		this.test2();
+
 		// Test the DelayPayment Operation
 		//this.test3();
+		
+		// Test the DelayPayment Operation
+		//this.test4();
 
 	}
 	
@@ -203,7 +208,7 @@ public class AppController {
 	}
 
 	/**
-	 * Test method #2 - Tests concurrency for DelayPayment operation
+	 * Test method #3 - Tests concurrency for DelayPayment operation
 	 * 
 	 * @throws InterruptedException
 	 */
@@ -263,6 +268,42 @@ public class AppController {
 		tm1.start();
 		tm1.join();
 		
+		this.clearBankData();
+	}
+
+	/**
+	 * Test method #4 - Tests delayPayment operation
+	 * 
+	 * @throws InterruptedException
+	 */
+	protected void test4() throws InterruptedException {
+
+		// Create a few customer clients in their own threads and make them do some operations
+		final Thread tc1 = new Thread() {
+			@Override
+			public void run() {
+				cust1 = new CustomerClient();
+				int accNbr1 = cust1.openAccount("rbc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+			
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				GetLoanResponse resp = cust1.getLoan("rbc", accNbr1, "jondoe", 500);
+				
+				// Delay the loan that was just created
+				man1 = new ManagerClient();
+
+				// Set the new loan date
+				Calendar cal = Calendar.getInstance();
+				Date today = cal.getTime();
+				cal.add(Calendar.YEAR, 1); // to get previous year add -1
+				Date nextYear = cal.getTime();
+
+				man1.delayPayment("rbc", resp.newLoanId, today, nextYear);
+				man1.printCustomerInfo("rbc");
+			}
+		};
+
+		tc1.start();
+		tc1.join();
 		this.clearBankData();
 	}
 	
