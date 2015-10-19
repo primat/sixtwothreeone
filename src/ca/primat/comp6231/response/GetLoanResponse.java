@@ -1,8 +1,22 @@
 package ca.primat.comp6231.response;
 
-public class GetLoanResponse extends ServerResponse {
+import java.io.Serializable;
 
-	final public int newLoanId;
+public class GetLoanResponse extends ServerResponse implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	public int newLoanId;
+	
+	/**
+	 * Default Constructor
+	 */
+	public GetLoanResponse() {
+		super();
+		this.newLoanId = 0;
+	}
 	
 	/**
 	 * Constructor
@@ -12,9 +26,15 @@ public class GetLoanResponse extends ServerResponse {
 	 * @param debugMessage
 	 * @param newAccountNbr
 	 */
-	public GetLoanResponse(final Boolean result, final String message, final String debugMessage, final int newLoanId) {
-		
+	public GetLoanResponse(Boolean result, String message, String debugMessage, int newLoanId) {
 		super(result, message, debugMessage);
 		this.newLoanId = newLoanId;
+	}
+	
+	/**
+	 * 
+	 */
+	public String toString() {
+		return "result: " + result + ", newLoanId: " + newLoanId + ", message: " + message + ", debugMessage: " + debugMessage;
 	}
 }

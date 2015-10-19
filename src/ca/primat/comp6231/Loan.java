@@ -56,6 +56,8 @@ public class Loan {
 	public String getEmailAddress() {
 		return emailAddress;
 	}
-
 	
+	public String toString() {
+		return "accountNbr: "+ this.accountNbr + ", emailAddress: " + this.emailAddress + ", amount: " + this.amount + ", dueDate: " + this.dueDate + ", id: " + this.id;
+	}
 }

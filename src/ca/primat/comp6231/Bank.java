@@ -43,6 +43,19 @@ public class Bank {
 	}
 	
 	/**
+	 * Method used for clearing test data
+	 */
+	public void resetBankData() {
+		char ch;
+		for (ch = 'A'; ch <= 'Z'; ++ch) {
+			accounts.put(String.valueOf(ch), new ThreadSafeHashMap<Integer, Account>()); 
+		}
+		for (ch = 'A'; ch <= 'Z'; ++ch) {
+			loans.put(String.valueOf(ch), new ThreadSafeHashMap<Integer, Loan>()); 
+		}
+	}
+	
+	/**
 	 * Loop through the data structure to find an account which corresponds to a provided account number
 	 * 
 	 * @param accountNbr
@@ -74,24 +87,26 @@ public class Bank {
 		
 		for (String firstLetter : this.accounts.keySet()) {
 			ThreadSafeHashMap<Integer, Account> accountsByLetter = this.accounts.get(firstLetter);
-			for (Integer username : accountsByLetter.keySet()) {
-				Account account = accountsByLetter.get(username);
-				if (account.accountNbr == accountNbr && account.password == password) {
-					return account;
-				}
+			Account account = accountsByLetter.get(accountNbr);
+			if (account == null || !account.password.equals(password)) {
+				return null;
 			}
+			return account;
 		}
 		
 		return null;
 	}
-	
-	
-//	public Account addLoan(int accountNumber, int amount, Date dueDate) {
-//		Loan loan = new Loan(amount, amount, dueDate, nextLoanId++);
-//		
-//		return null;
-//	}
-	
+
+	/**
+	 * Create an account
+	 * 
+	 * @param firstName
+	 * @param lastName
+	 * @param emailAddress
+	 * @param phoneNumber
+	 * @param password
+	 * @return
+	 */
 	public OpenAccountResponse createAccount(String firstName, String lastName, String emailAddress, String phoneNumber, String password) {
 		
 		String firstLetter = emailAddress.substring(0, 1).toUpperCase();
@@ -142,7 +157,6 @@ public class Bank {
 	    int loanId = nextLoanId++;
 		Loan loan = new Loan(accountNbr, emailAddress, loanAmount, cal.getTime(), loanId);
 		loans.put(loanId, loan);
-		
 		return nextLoanId-1;
 	}
 
@@ -168,42 +182,14 @@ public class Bank {
 		
 		for (String firstLetter : this.accounts.keySet()) {
 			ThreadSafeHashMap<Integer, Account> accountsByLetter = this.accounts.get(firstLetter);
-			for (Integer username : accountsByLetter.keySet()) {
-				Account account = accountsByLetter.get(username);
-				if (account.accountNbr == accountNbr) {
-					return account;
-				}
+			Account account = accountsByLetter.get(accountNbr);
+			if (account != null) {
+				return account;
 			}
 		}
-		
 		return null;
 	}
 
-	/**
-	 * Gets the account corresponding to the provided email address or null if no such account exists
-	 * 
-	 * @param emailAddress
-	 * @return
-	 */
-//	public Account getAccount(String emailAddress) {
-//		
-//		String firstLetter = emailAddress.substring(0, 1).toUpperCase();
-//		
-//		ThreadSafeHashMap<String, Account> accounts = this.accounts.get(firstLetter);
-//		Account accounts.get(emailAddress);
-//		
-//		
-//		
-////		for (Integer username : accountsByLetter.keySet()) {
-////			Account account = accountsByLetter.get(username);
-////			if (account.accountNbr == accountNbr) {
-////				return account;
-////			}
-////		}
-//		
-//		return null;
-//	}
-	
 	/**
 	 * 
 	 * @param id
@@ -256,12 +242,11 @@ public class Bank {
 		
 		String firstLetter = emailAddress.substring(0, 1).toUpperCase();
 		ThreadSafeHashMap<Integer, Loan> loansByLetter = this.loans.get(firstLetter);
-		
 		int result = 0;
 		Date now = Calendar.getInstance().getTime();
 		for (Integer loanId : loansByLetter.keySet()) {
 			Loan loan = loansByLetter.get(loanId);
-			if (loan.emailAddress == emailAddress && now.before(loan.dueDate)) {
+			if (loan.emailAddress.equals(emailAddress) && now.before(loan.dueDate)) {
 				result += loan.amount;
 			}
 		}

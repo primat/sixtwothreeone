@@ -96,4 +96,18 @@ public class ThreadSafeHashMap<K, V> {
 			writeLock.unlock();
 		}
 	}
+
+	/**
+	 * Gets the number of elements in the HashMap
+	 * 
+	 * @return the number of elements in the ThreadSafeHashMap
+	 */
+	public int size() {
+		readLock.lock();
+		try {
+			return map.size();
+		} finally {
+			readLock.unlock();
+		}
+	}
 }

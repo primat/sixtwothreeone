@@ -1,8 +1,22 @@
 package ca.primat.comp6231.response;
 
-public class OpenAccountResponse extends ServerResponse {
+import java.io.Serializable;
 
-	final public int accountNbr;
+public class OpenAccountResponse extends ServerResponse implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	public int accountNbr;
+	
+	/**
+	 * Default Constructor
+	 */
+	public OpenAccountResponse() {
+		super();
+		this.accountNbr = 0;
+	}
 	
 	/**
 	 * Constructor
@@ -12,8 +26,7 @@ public class OpenAccountResponse extends ServerResponse {
 	 * @param debugMessage
 	 * @param accountNbr
 	 */
-	public OpenAccountResponse(final Boolean result, final String message, final String debugMessage, final int accountNbr) {
-		
+	public OpenAccountResponse(Boolean result, String message, String debugMessage, int accountNbr) {
 		super(result, message, debugMessage);
 		this.accountNbr = accountNbr;
 	}

@@ -3,10 +3,7 @@ package ca.primat.comp6231;
 import java.net.InetSocketAddress;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 
 import ca.primat.comp6231.response.GetLoanResponse;
 import ca.primat.comp6231.response.OpenAccountResponse;
@@ -25,133 +22,169 @@ public class AppController {
 	private CustomerClient cust1;
 	private CustomerClient cust2;
 	private CustomerClient cust3;
-	private CustomerClient cust4;
+//	private CustomerClient cust4;
 	private ManagerClient man1;
-	private ManagerClient man2;
-	private ManagerClient man3;
-	private ManagerClient man4;
+//	private ManagerClient man2;
+//	private ManagerClient man3;
+//	private ManagerClient man4;
 	private LocalRegistry registry;
-	
-	final private Object commonLock = new Object();
+	private Object commonLock = new Object();
 	
 	/**
 	 * The application launcher
 	 * 
 	 * @param args
+	 * @throws InterruptedException 
 	 */
-	public static void main(String args[]) {
+	public static void main(String args[]) throws InterruptedException {
 		new AppController();
 	}
 
 	/**
 	 * Use the AppController constructor to choose a scenario to run
+	 * @throws InterruptedException 
 	 */
-	public AppController() {
+	public AppController() throws InterruptedException {
 		
 		super();
 		this.createRmiRegistry();
 		this.createBanks();
-		this.initBankData();
-		//this.bindAndExportBankServers();
+		//this.initBankData();
+		this.bindAndExportBankServers();
+
+		// Run individual tests
+		//this.test1();
+		this.test2();
+		//this.test3();
+		//this.test4();
+		//...
 		
+	}
+	
+	/**
+	 * Test method #1
+	 * 
+	 * @throws InterruptedException
+	 */
+	protected void test1() throws InterruptedException {
+
+		// Create a few customer clients in their own threads and make them do some operations
+		final Thread tc1 = new Thread() {
+			@Override
+			public void run() {
+				cust1 = new CustomerClient();
+				int accNbr1 = cust1.openAccount("rbc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				cust1.openAccount("bmo", "Charles", "Xavier", "charlesxavier@gmail.com", "15145145145", "charlesxavier");
+				cust1.openAccount("cibc", "Vincent", "Vega", "vincentvega@gmail.com", "15145145155", "vincentvega");
+				
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust1.getLoan("rbc", accNbr1, "jondoe", 500);
+			}
+		};
+		final Thread tc2 = new Thread() {
+			@Override
+			public void run() {
+				cust2 = new CustomerClient();
+				cust2.openAccount("rbc", "Sarah", "Conor", "sarahconor@gmail.com", "15145145144", "sarahconor");
+				cust2.openAccount("bmo", "Lois", "Lane", "loislane@gmail.com", "15145145244", "loislane");
+				cust2.openAccount("cibc", "Jules", "Winnfield", "juleswinnfield@gmail.com", "15145145144", "juleswinnfield");
+			}
+		};
+		final Thread tc3 = new Thread() {
+			@Override
+			public void run() {
+				cust3 = new CustomerClient();
+				cust3.openAccount("rbc", "Kyle", "Reese", "kylereese@gmail.com", "15145145163", "kylereese");
+				cust3.openAccount("bmo", "Elanor", "Gamgee", "elanorgamgee@gmail.com", "15145145343", "elanorgamgee");
+				int accNbr1 = cust3.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust1.getLoan("cibc", accNbr1, "jondoe", 600);
+			}
+		};
+
+		tc1.start();
+		tc2.start();
+		tc3.start();
+
+		final Thread tm1 = new Thread() {
+			@Override
+			public void run() {
+				//System.out.println("Starting manager client #1");
+				man1 = new ManagerClient();
+				man1.printCustomerInfo("rbc");
+				man1.printCustomerInfo("cibc");
+				man1.printCustomerInfo("bmo");
+			}
+		};
+
+		Thread.sleep(1000);
+		tm1.start();
+
+		// Wait for all threads to complete before proceeding and clear bank data
+		tc1.join();
+		tc2.join();
+		tc3.join();
+		tm1.join();
+		this.clearBankData();
+	}
+	
+	/**
+	 * Test method #2
+	 * 
+	 * @throws InterruptedException
+	 */
+	protected void test2() throws InterruptedException {
+
+		// Create a few customer clients in their own threads and make them do some operations
+		final Thread tc1 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr1 = cust.openAccount("rbc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("rbc", accNbr1, "jondoe", 500);
+			}
+		};
+
+		final Thread tc3 = new Thread() {
+			@Override
+			public void run() {
+				CustomerClient cust = new CustomerClient();
+				int accNbr2 = cust.openAccount("cibc", "John", "Doe", "jondoe@gmail.com", "15145145145", "jondoe");
+				// Add a loan for user jondoe@gmail.com at bank "rbc"
+				cust.getLoan("cibc", accNbr2, "jondoe", 600);
+			}
+		};
+
+		tc1.start();
+		tc3.start();
+
+		final Thread tm1 = new Thread() {
+			@Override
+			public void run() {
+				//System.out.println("Starting manager client #1");
+				man1 = new ManagerClient();
+				man1.printCustomerInfo("rbc");
+				man1.printCustomerInfo("cibc");
+			}
+		};
+
+		// Wait for all threads to complete before proceeding and clear bank data
+		tc1.join();
+		tc3.join();
+
+		tm1.start();
+		tm1.join();
 		
-		
-		
-//		try {
-//			Thread.sleep(1000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		GetLoanResponse resp = null;
-//		try {
-//			resp = this.bankServer1.getLoan(100, "jondoe", 100);
-//			System.out.println("Message: " + resp.message);
-//		} catch (RemoteException e) {
-//			System.out.println("Failed to initialize loans");
-//			e.printStackTrace();
-//		}
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		// Create a few customer clients in their own threads
-//		final Thread t1 = new Thread() {
-//			@Override
-//			public void run() {
-//				System.out.println("Starting customer client #1");
-//				cust1 = new CustomerClient();
-//			}
-//		};
-//		final Thread t2 = new Thread() {
-//			@Override
-//			public void run() {
-//				System.out.println("Starting customer client #2");
-//				cust2 = new CustomerClient();
-//				cust2.com("rbc", false);
-//			}
-//		};
-//		final Thread t3 = new Thread() {
-//			@Override
-//			public void run() {
-//				System.out.println("Starting customer client #3");
-//				cust3 = new CustomerClient();
-//				cust3.com("cibc", true);
-//			}
-//		};
-//
-//		t1.start();
-//		t2.start();
-//		t3.start();
-//		cust4.com("rbc", false);
-//
-//		Runnable task3 = () -> {
-//			System.out.println("Starting customer client #3");
-//			cust3 = new CustomerClient();
-//			cust3.com("cibc", true);
-//		};
-//		task3.run();
-//		Thread t3 = new Thread(task3);
-//		t3.start();
-//
-//
-//		System.out.println("Starting customer client #4");
-//		cust4 = new CustomerClient();
-//
-//
-//		try {
-//			bankServer1.printCustomerInfo();
-//		} catch (RemoteException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//
-//
-//		System.out.println("Starting customer client #1");
-//		CustomerClient cust1 = new CustomerClient();
-//		System.out.println("Starting manager #1");
-//		ManagerClient man1 = new ManagerClient();
-//		man1.printCustomerInfo("rbc");
-//		man1.printCustomerInfo("cibc");
-//		man1.printCustomerInfo("bmo");
-//
-//		cust1.openAccount("rbc", "Kyle", "Reese", "kylereese@gmail.com", "15145145143", "kylereese");
-//		man1.printCustomerInfo("rbc");
+		this.clearBankData();
 	}
 	
 	/**
 	 * Prepares the BankServers to be used for RMI
 	 */
 	private void bindAndExportBankServers() {
-		
+
 		try {
 			this.registry.exportAndBind(this.bankServer1);
 		} catch (RemoteException e) {
@@ -186,6 +219,7 @@ public class AppController {
 	/**
 	 * Initialize the bank data
 	 */
+	@SuppressWarnings("unused")
 	private void initBankData() {
 		
 		OpenAccountResponse oaResp1_1 = null;
@@ -212,15 +246,15 @@ public class AppController {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 		GetLoanResponse resp = null;
 		try {
-			resp = this.bankServer1.getLoan(oaResp1_1.accountNbr, "jondoe", 100);
-			System.out.println("Message: " + resp.message);
+			this.bankServer1.printCustomerInfo();
+			resp = this.bankServer1.getLoan(oaResp1_1.accountNbr, "jondoe", 300);
+			this.bankServer1.printCustomerInfo();
 		} catch (RemoteException e) {
-			System.out.println("Failed to initialize loans");
 			e.printStackTrace();
 		}
 	}
@@ -261,5 +295,13 @@ public class AppController {
 			e.printStackTrace();
 		}
 	}
-
+	
+	/**
+	 * Resets all bank data to the empty state
+	 */
+	private void clearBankData() {
+		this.bankServer1.bank.resetBankData();
+		this.bankServer2.bank.resetBankData();
+		this.bankServer3.bank.resetBankData();
+	}
 }

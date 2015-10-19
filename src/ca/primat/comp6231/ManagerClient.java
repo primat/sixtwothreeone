@@ -7,6 +7,8 @@ import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import ca.primat.comp6231.response.ServerResponse;
+
 /**
  * The manager client application
  * 
@@ -17,7 +19,6 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 
 	protected static int instances = 0;
 	final protected int id;
-	protected Logger logger = null;
 	
 	/**
 	 * Constructor
@@ -32,7 +33,7 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 	    FileHandler fh;  
 
 	    try {
-	        // This block configure the logger with handler and formatter  
+	        // This block configures the logger with handler and formatter  
 	        fh = new FileHandler(textId + "-log.txt");  
 	        logger.addHandler(fh);
 	        SimpleFormatter formatter = new SimpleFormatter();  
@@ -56,27 +57,52 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 		new ManagerClient();
 	}
 	
+	/**
+	 * 
+	 * @param bank
+	 * @param loanId
+	 * @param currentDueDate
+	 * @param NewDueDate
+	 * @return
+	 */
 	public Boolean delayPayment (String bank, int loanId, Date currentDueDate, Date NewDueDate) {
 		
 		BankServerManagerInterface server = this.getBankServer(bank);
 		try {
-			server.delayPayment(loanId, currentDueDate, NewDueDate);
+			ServerResponse response = server.delayPayment(loanId, currentDueDate, NewDueDate);
+			logger.info(this.getTextId() + ": " + response);
 		} catch (RemoteException e) {
 			System.out.println("Remote exception: could not delay payment");
-			//e.printStackTrace();
+			e.printStackTrace();
 		}	
 		return null;
 	}
 	
+	/**
+	 * 
+	 * @param bank
+	 * @return
+	 */
 	public String printCustomerInfo(String bank) {
 		BankServerManagerInterface server = this.getBankServer(bank);
 		try {
-			server.printCustomerInfo();
+			String result = server.printCustomerInfo();
+			logger.info(this.getTextId() + ": " + result);
+			
 		} catch (RemoteException e) {
 			System.out.println("Remote exception: could not print customer info");
-			//e.printStackTrace();
+			e.printStackTrace();
 		}	
 		return null;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	protected String getTextId() {
+		
+		return "CustomerClient-" + this.id;
 	}
 	
 }

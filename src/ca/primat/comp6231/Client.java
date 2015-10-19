@@ -7,11 +7,14 @@ import java.rmi.RMISecurityManager;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 @SuppressWarnings("deprecation")
 public class Client<T extends Remote> {
 
 	protected HashMap<String, T> servers;
+	protected Logger logger = null;
+	
 	/**
 	 * 
 	 * Constructor

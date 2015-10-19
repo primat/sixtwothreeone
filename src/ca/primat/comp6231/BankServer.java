@@ -1,7 +1,6 @@
 package ca.primat.comp6231;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.rmi.RemoteException;
 import java.util.Date;
 import java.util.HashMap;
@@ -28,9 +27,9 @@ import ca.primat.comp6231.response.ServerResponse;
  */
 public class BankServer implements BankServerCustomerInterface, BankServerManagerInterface {
 
-	protected volatile Object lockObject;
 	protected volatile Bank bank;
 	protected volatile HashMap<String, Bank> bankCollection;
+	protected volatile Object lockObject;
 	protected int sequenceNbr = 1;
 	protected Logger logger = null;
 	
@@ -77,27 +76,29 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	@Override
 	public GetLoanResponse getLoan(int accountNbr, String password, int loanAmount) throws RemoteException {
 
+		int newLoanId = 0;
+		
 		synchronized (lockObject) {
 
 			logger.info("-------------------------------");
 			logger.info(this.bank.getTextId() + ": Client invoked getLoan(accountNbr:" + accountNbr + ", password:" + password + ", loanAmount:" + loanAmount + ")");
 	
-			// Validate that the account exists
-			Account account = this.bank.authenticateAccount(accountNbr, password);
+			// Test the existence of the account
+			Account account = this.bank.getAccount(accountNbr);
 			if (account == null) {
 				logger.info(this.bank.getTextId() + ": Account " + accountNbr + " does not exist at bank " + this.bank.getId());
 				return new GetLoanResponse(false, "Account " + accountNbr + " does not exist at bank " + this.bank.getId(), "", 0);
 			}
-	
+
 			// Validate that passwords match
-			if (account.getPassword() != password) {
-				logger.info(this.bank.getTextId() + ": Invalid credentials. Loan refused at bank " + this.bank.getId());
+			if (!account.password.equals(password)) {
+				logger.info(this.bank.getTextId() + ": Invalid credentials. Loan refused at bank " + this.bank.getId() +  " " + account.password + "/" + password);
 				return new GetLoanResponse(false, "Invalid credentials. Loan refused at bank " + this.bank.getId(), "", 0);
 			}
 	
 			// Avoid making UDP requests if the loan amount is already bigger than the credit limit of the local account
 			int currentLoanAmount = this.bank.getLoanSum(accountNbr);
-			if (currentLoanAmount +  loanAmount > account.getCreditLimit()) {
+			if (currentLoanAmount + loanAmount > account.getCreditLimit()) {
 				logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded");
 				return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded", "", 0);
 			}
@@ -106,8 +107,8 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 			ExecutorService pool = Executors.newFixedThreadPool(this.bankCollection.size()-1);
 		    Set<Future<LoanRequestStatus>> set = new HashSet<Future<LoanRequestStatus>>();
 		    for (Bank destinationBank : this.bankCollection.values()) {
+		    	
 		    	if (this.bank != destinationBank) {
-
 					Callable<LoanRequestStatus> callable = new UdpRequesterCallable(this.bank, destinationBank, account.emailAddress, this.sequenceNbr, this.logger);
 					Future<LoanRequestStatus> future = pool.submit(callable);
 					set.add(future);
@@ -120,36 +121,41 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 				try {
 					LoanRequestStatus status = future.get();
 					if (status == null) {
-	
+						logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Unable to obtain a status for the original loan request.");
+						return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Unable to obtain a status for the original loan request.", "", 0);
+						//continue;
 					}
 					else if (status.status == LoanRequestStatus.STATUS_SUCCESS) {
 						extLoanSum += status.loanSum;
 					}
 					else {
-						System.out.println(status.message);
+						logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". " + status.message);
 						return new GetLoanResponse(false, status.message, "", 0);
 					}
 				} catch (InterruptedException e) {
-					System.out.println("Bank " + this.bank.getId() + " loan request failed. InterruptedException");
 					e.printStackTrace();
+					logger.info(this.bank.getTextId() + ": Loan request failed for user " + account.emailAddress + ". InterruptedException");
 					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". InterruptedException", "", 0);
 				} catch (ExecutionException e) {
-					System.out.println("Bank " + this.bank.getId() + " loan request failed. ExecutionException");
 					e.printStackTrace();
+					logger.info(this.bank.getTextId() + ": Loan request failed for user " + account.emailAddress + ". InterExecutionExceptionruptedException");
 					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". ExecutionException", "", 0);
 				}
 			}
 			this.sequenceNbr++;
 			
 			// Check if all operations were successful
-			if (currentLoanAmount + extLoanSum > account.getCreditLimit()) {
-				return new GetLoanResponse(false, "", "Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded", 0);
+			if ((loanAmount + extLoanSum) > account.getCreditLimit()) {
+				logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded");
+				return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded", "", 0);
 			}
-		
-			this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
+			else {
+				newLoanId = this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
+				logger.info(this.bank.getTextId() + ": Loan approved for user " + account.emailAddress + ", amount " + loanAmount + " at bank " + this.bank.getId());
+			}
+			
+			return new GetLoanResponse(true, "Loan approved at bank " + this.bank.getId() + ".", "", newLoanId);
 		}
-
-		return new GetLoanResponse(true, "", "Loan approved at bank " + this.bank.getId() + ".", 0);
 	}
 
 	@Override
@@ -161,7 +167,7 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 		OpenAccountResponse resp = this.bank.createAccount(firstName, lastName, emailAddress, phoneNumber, password);
 	
 		if (resp.result) {
-			logger.info(this.bank.getTextId() + " successfully opened an account for user " + emailAddress);
+			logger.info(this.bank.getTextId() + " successfully opened an account for user " + emailAddress + " with account number " + resp.accountNbr);
 		}
 		else {
 			logger.info(this.bank.getTextId() + " failed to open an account for user " + emailAddress);
@@ -203,114 +209,27 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 
 		logger.info("-------------------------------");
 		logger.info(this.bank.getTextId() + ": Client invoked printCustomerInfo()");
-		
+
+		String result = new String();
+		result = "------ ACCOUNTS ------\n";
 		for (String key : this.bank.accounts.keySet()) {
 			ThreadSafeHashMap<Integer, Account> accountsByLetter = this.bank.accounts.get(key);
 			for (Integer accountId : accountsByLetter.keySet()) {
 				Account account = accountsByLetter.get(accountId);
-				System.out.println(accountId + ": " + account.toString());
-				System.out.println("------------------------------------");
+				result += account.toString() + "\n";
 			}
 		}
 		
-		return null;
+		result += "------ LOANS ------\n";
+		for (String key : this.bank.loans.keySet()) {
+			ThreadSafeHashMap<Integer, Loan> loansByLetter = this.bank.loans.get(key);
+			for (Integer loanId : loansByLetter.keySet()) {
+				Loan loan = loansByLetter.get(loanId);
+				result += loan.toString() + "\n";
+			}
+		}
+
+		System.out.println(result);
+		return result;
 	}
-	
-//	/**
-//	 * Get the addresses of banks other than this one
-//	 * @return
-//	 */
-//	protected Set<InetSocketAddress> getPeerAddresses() {
-//		
-//		Set<InetSocketAddress> peerAddresses = new HashSet<InetSocketAddress>();
-//		
-//		for(Bank bankObj : bankCollection.values()) {
-//		    if (bankObj.udpAddress != this.bank.udpAddress) {
-//		    	peerAddresses.add(bankObj.udpAddress);
-//		    }
-//		}
-//		
-//		return peerAddresses;
-//	}
-
-	
-	
-//	public int requestLoanAmount(Bank destinationBank, String emailAddress) {
-//		//this.bankSocket, this.bank, destinationBank, account.emailAddress, this.sequenceNbr
-//		try {
-//	
-//			final byte[] receiveData = new byte[1024];
-//			final DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-//			
-//			MessageRequestLoan message = new MessageRequestLoan();
-//			message.emailAddress = emailAddress;
-//			message.sequenceNbr = this.sequenceNbr;
-//			
-//			
-//			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//	        ObjectOutputStream oos = new ObjectOutputStream(baos);
-//	        oos.writeObject(message);
-//			byte[] sendData = baos.toByteArray();
-//			
-//			//byte[] sendData = new byte[1024];
-//			//sendData = emailAddress.getBytes();
-//			
-//			System.out.println("Bank " + this.bank.getId() + " requesting loan info from bank " + destinationBank.getId() + " (" + sendData.length + " bytes)");
-//			final DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, destinationBank.udpAddress);
-//			this.hostSocket.send(sendPacket);
-//			this.hostSocket.setSoTimeout(3000);
-//			
-//			try {
-//				ByteArrayInputStream bais = new ByteArrayInputStream(receivePacket.getData());
-//	            ObjectInputStream ois = new ObjectInputStream(bais);
-//	            Object obj;
-//				obj = ois.readObject();
-//	            bais.close();
-//	            ois.close();
-//	            
-//	            MessageResponseLoan resp = null;
-//	            
-//	            if(obj instanceof MessageResponseLoan) {
-//	                System.out.println("Loan Request");
-//	                resp = (MessageResponseLoan) obj;
-//	            } else {
-//	                System.out.println("Not a loan request");
-//	                return -1;
-//	            }
-//	            
-//	            if (resp.sequenceNbr != this.sequenceNbr) {
-//	            	System.out.println("Bank " + this.sourceBank.getId() + " received an out of sequence response from BankServer " + this.destinationBank.getId() + ". Discarding packet.");
-//	                return -1;
-//	            }
-//	            
-//                System.out.println(("Bank " + this.sourceBank.getId() + " received a successfull response from BankServer " + this.destinationBank.getId() + " (available amount: " + resp.amountAvailable + ")"));
-//				
-//				
-////				clientSocket.receive(receivePacket);
-////				final String modifiedSentence = new String(receivePacket.getData());
-////				final InetAddress returnIPAddress = receivePacket.getAddress();
-////				final int port = receivePacket.getPort();
-////				System.out.println("From server at: " + returnIPAddress + ":" + port);
-////				System.out.println("Message: " + modifiedSentence);
-////				
-////				
-//			} catch (ClassNotFoundException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			} catch (final SocketTimeoutException ste) {
-//				System.out.println("Timeout Occurred: Packet assumed lost");
-//			}
-//			clientSocket.close();
-//
-//		} catch (final SocketException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		} catch (final IOException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		
-//		return 100;
-//	}
-
 }

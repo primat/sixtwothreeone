@@ -1,5 +1,6 @@
 package ca.primat.comp6231;
 
+
 /**
  * Account "entity" stores account data
  * 
@@ -83,4 +84,8 @@ public class Account {
 		this.creditLimit = creditLimit;
 	}
 	
+	public String toString() {
+		return "accountNbr: " + this.accountNbr + ", firstName: " + this.firstName + ", lastName: " + this.lastName + ", emailAddress: " + this.emailAddress + 
+		", phoneNbr: " + this.phoneNbr + ", password: " + this.password + ", creditLimit: " + this.creditLimit;
+	}
 }
