@@ -42,6 +42,7 @@ public class LocalRegistry {
 	 * @throws AlreadyBoundException
 	 */
 	public Boolean exportAndBind(BankServer bankServer) throws RemoteException, AlreadyBoundException {
+		
 		Remote obj = UnicastRemoteObject.exportObject(bankServer, this.port);
 		this.reg.bind(bankServer.bank.getId(), obj);
 		return true;

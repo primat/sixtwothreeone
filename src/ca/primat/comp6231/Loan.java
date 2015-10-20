@@ -10,11 +10,11 @@ import java.util.Date;
  */
 public class Loan {
 
-	protected int accountNbr;
-	protected String emailAddress;
-	protected int amount;
-	protected Date dueDate;
-	protected int id;
+	private int accountNbr;
+	private String emailAddress;
+	private int amount;
+	private Date dueDate;
+	private int id;
 	
 	/**
 	 * Constructor

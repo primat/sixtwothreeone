@@ -64,19 +64,21 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	        System.exit(1); 
 	    }
 
+	    // Start the bank's UDP listener
 		BankUdpListener udpPeer = new BankUdpListener(this.bank, this.logger);
 		Thread udpPeerThread = new Thread(udpPeer);
 		udpPeerThread.start();
 	}
 	
 	//
-	// Operation performed by Customers
+	// Operations performed by Customers
 	//
 
 	@Override
 	public GetLoanResponse getLoan(int accountNbr, String password, int loanAmount) throws RemoteException {
 
 		int newLoanId = 0;
+		String returnMessage;
 
 		logger.info("-------------------------------");
 		logger.info(this.bank.getTextId() + ": Client invoked getLoan(accountNbr:" + accountNbr + ", password:" + password + ", loanAmount:" + loanAmount + ")");
@@ -86,28 +88,30 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 			// Test the existence of the account
 			Account account = this.bank.getAccount(accountNbr);
 			if (account == null) {
-				logger.info(this.bank.getTextId() + ": Account " + accountNbr + " does not exist at bank " + this.bank.getId());
-				return new GetLoanResponse(false, "Account " + accountNbr + " does not exist at bank " + this.bank.getId(), "", 0);
+				returnMessage = "Account " + accountNbr + " does not exist at bank " + this.bank.getId();
+				logger.info(this.bank.getTextId() + ": " + returnMessage);
+				return new GetLoanResponse(false, returnMessage, "", 0);
 			}
 
 			// Validate that passwords match
 			if (!account.password.equals(password)) {
-				logger.info(this.bank.getTextId() + ": Invalid credentials. Loan refused at bank " + this.bank.getId() +  " " + account.password + "/" + password);
-				return new GetLoanResponse(false, "Invalid credentials. Loan refused at bank " + this.bank.getId(), "", 0);
+				returnMessage = "Invalid credentials. Loan refused at bank " + this.bank.getId() +  " " + account.password + "/" + password;
+				logger.info(this.bank.getTextId() + ": " + returnMessage);
+				return new GetLoanResponse(false, returnMessage, "", 0);
 			}
 	
 			// Avoid making UDP requests if the loan amount is already bigger than the credit limit of the local account
 			int currentLoanAmount = this.bank.getLoanSum(accountNbr);
 			if (currentLoanAmount + loanAmount > account.getCreditLimit()) {
-				logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded");
-				return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded", "", 0);
+				returnMessage = "Loan refused at bank " + this.bank.getId() + ". Local credit limit exceeded";
+				logger.info(this.bank.getTextId() + ": " + returnMessage);
+				return new GetLoanResponse(false, returnMessage, "", 0);
 			}
 			
 			// Get the loan sum for all banks and approve or not the new loan
 			ExecutorService pool = Executors.newFixedThreadPool(this.bankCollection.size()-1);
 		    Set<Future<LoanRequestStatus>> set = new HashSet<Future<LoanRequestStatus>>();
 		    for (Bank destinationBank : this.bankCollection.values()) {
-		    	
 		    	if (this.bank != destinationBank) {
 					Callable<LoanRequestStatus> callable = new UdpRequesterCallable(this.bank, destinationBank, account.emailAddress, this.sequenceNbr, this.logger);
 					Future<LoanRequestStatus> future = pool.submit(callable);
@@ -115,44 +119,50 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 				}
 			}
 	
-			int extLoanSum = 0;
+			int extLoanSum = 0; // Storage for the total sum of loans at other banks for this user
+			
 			for (Future<LoanRequestStatus> future : set) {
 	
 				try {
 					LoanRequestStatus status = future.get();
 					if (status == null) {
-						logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Unable to obtain a status for the original loan request.");
-						return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Unable to obtain a status for the original loan request.", "", 0);
-						//continue;
+						returnMessage = "Loan refused at bank " + this.bank.getId() + ". Unable to obtain a status for the original loan request.";
+						logger.info(this.bank.getTextId() + ": " + returnMessage);
+						return new GetLoanResponse(false, returnMessage, "", 0);
 					}
 					else if (status.status == LoanRequestStatus.STATUS_SUCCESS) {
 						extLoanSum += status.loanSum;
 					}
 					else {
-						logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". " + status.message);
+						returnMessage = "Loan refused at bank " + this.bank.getId() + ". " + status.message;
+						logger.info(this.bank.getTextId() + ": " + returnMessage);
 						return new GetLoanResponse(false, status.message, "", 0);
 					}
 				} catch (InterruptedException e) {
 					e.printStackTrace();
-					logger.info(this.bank.getTextId() + ": Loan request failed for user " + account.emailAddress + ". InterruptedException");
-					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". InterruptedException", "", 0);
+					returnMessage = "Loan request failed for user " + account.emailAddress + ". InterruptedException";
+					logger.info(this.bank.getTextId() + ": " + returnMessage);
+					return new GetLoanResponse(false, returnMessage, "", 0);
+					
 				} catch (ExecutionException e) {
 					e.printStackTrace();
-					logger.info(this.bank.getTextId() + ": Loan request failed for user " + account.emailAddress + ". InterExecutionExceptionruptedException");
-					return new GetLoanResponse(false, "Bank " + this.bank.getId() + " loan request failed for user " + account.emailAddress + ". ExecutionException", "", 0);
+					returnMessage = "Loan request failed for user " + account.emailAddress + ". InterExecutionExceptionruptedException";
+					logger.info(this.bank.getTextId() + ": " + returnMessage);
+					return new GetLoanResponse(false, returnMessage, "", 0);
 				}
 			}
+			
 			this.sequenceNbr++;
 			
-			// Check if all operations were successful
+			// Check if all (UDP) operations were successful
 			if ((loanAmount + extLoanSum) > account.getCreditLimit()) {
 				logger.info(this.bank.getTextId() + ": Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded");
 				return new GetLoanResponse(false, "Loan refused at bank " + this.bank.getId() + ". Total credit limit exceeded", "", 0);
 			}
-			else {
-				newLoanId = this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
-				logger.info(this.bank.getTextId() + ": Loan approved for user " + account.emailAddress + ", amount " + loanAmount + " at bank " + this.bank.getId());
-			}
+				
+			newLoanId = this.bank.createLoan(account.emailAddress, accountNbr, loanAmount);
+			
+			logger.info(this.bank.getTextId() + ": Loan approved for user " + account.emailAddress + ", amount " + loanAmount + " at bank " + this.bank.getId());
 			
 			return new GetLoanResponse(true, "Loan approved at bank " + this.bank.getId() + ".", "", newLoanId);
 		}
@@ -176,7 +186,7 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 	}
 
 	//
-	// Operation performed by Managers
+	// Operations performed by Managers
 	//
 	
 	@Override
@@ -192,11 +202,12 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " does not exist");
 				return new ServerResponse(false, "", "Loan id " + loanId + " does not exist");
 			}
+			// Is this validation required?
 //			if (!loan.dueDate.equals(currentDueDate)) {
 //				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " does not exist");
 //				return new ServerResponse(false, "", "Loan id " + loanId + " - currentDate argument mismatch");
 //			}
-			if (!loan.dueDate.before(newDueDate)) {
+			if (!loan.getDueDate().before(newDueDate)) {
 				logger.info(this.bank.getTextId() + ": Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
 				return new ServerResponse(false, "", " Loan id " + loanId + " - currentDueDate argument must be later than the actual current due date of the loan");
 			}
@@ -232,7 +243,7 @@ public class BankServer implements BankServerCustomerInterface, BankServerManage
 				result += loan.toString() + "\n";
 			}
 		}
-		//System.out.println(result);
+
 		return result;
 	}
 }

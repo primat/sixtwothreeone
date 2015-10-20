@@ -24,6 +24,7 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 	 * Constructor
 	 */
 	public ManagerClient() {
+		
 		super();
 		this.id = ++instances;
 		
@@ -85,6 +86,7 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 	 * @return
 	 */
 	public String printCustomerInfo(String bank) {
+		
 		BankServerManagerInterface server = this.getBankServer(bank);
 		try {
 			String result = server.printCustomerInfo();
@@ -104,5 +106,4 @@ public class ManagerClient extends Client<BankServerManagerInterface> {
 	protected String getTextId() {
 		return "ManagerClient-" + this.id;
 	}
-	
 }

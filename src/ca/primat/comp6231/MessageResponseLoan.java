@@ -2,6 +2,12 @@ package ca.primat.comp6231;
 
 import java.io.Serializable;
 
+/**
+ * A message object representing a loan request response
+ * 
+ * @author mat
+ *
+ */
 public class MessageResponseLoan implements Serializable {
 
 	/**
@@ -11,5 +17,4 @@ public class MessageResponseLoan implements Serializable {
 	public int sequenceNbr;
 	public int amountAvailable;
 	public String emailAddress;
-	
 }

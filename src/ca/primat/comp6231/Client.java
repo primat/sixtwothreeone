@@ -9,6 +9,13 @@ import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.logging.Logger;
 
+/**
+ * Base class for customer and manager clients 
+ * 
+ * @author mat
+ *
+ * @param <T>
+ */
 @SuppressWarnings("deprecation")
 public class Client<T extends Remote> {
 

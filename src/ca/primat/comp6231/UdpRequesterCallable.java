@@ -128,14 +128,21 @@ public class UdpRequesterCallable implements Callable<LoanRequestStatus> {
 
 			} catch (final SocketTimeoutException ste) {
 				System.out.println("Timeout Occurred: Packet assumed lost");
-			} finally {if(clientSocket != null) clientSocket.close();}
+			} finally {
+				if (clientSocket != null)
+					clientSocket.close();
+			}
+			
 			clientSocket.close();
 
 		} catch (final SocketException e) {
 			e.printStackTrace();
 		} catch (final IOException e) {
 			e.printStackTrace();
-		} finally {if(clientSocket != null) clientSocket.close();}
+		} finally {
+			if (clientSocket != null)
+				clientSocket.close();
+		}
 		
 		return null;
 	}

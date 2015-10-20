@@ -57,6 +57,10 @@ public class ThreadSafeHashMap<K, V> {
 		}
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
 	public Set<K> keySet() {
 		readLock.lock();
 		try {

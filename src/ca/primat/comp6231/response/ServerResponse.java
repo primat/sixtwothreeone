@@ -2,9 +2,7 @@ package ca.primat.comp6231.response;
 
 import java.io.Serializable;
 
-import ca.primat.comp6231.BankServerResponseInterface;
-
-public class ServerResponse implements BankServerResponseInterface, Serializable {
+public class ServerResponse implements Serializable {
 
 	/**
 	 * 
@@ -32,7 +30,7 @@ public class ServerResponse implements BankServerResponseInterface, Serializable
 	 */
 	public ServerResponse(Boolean result, String message, String debugMessage) {
 		
-		//super();
+		super();
 		this.result = result;
 		this.message = message;
 		this.debugMessage = debugMessage;

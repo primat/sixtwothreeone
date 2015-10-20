@@ -1,8 +1,7 @@
 package ca.primat.comp6231;
 
-
 /**
- * Account "entity" stores account data
+ * The Account class stores account related data
  * 
  * @author mat
  *

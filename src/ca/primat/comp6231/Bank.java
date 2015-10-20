@@ -7,13 +7,18 @@ import java.util.HashMap;
 
 import ca.primat.comp6231.response.OpenAccountResponse;
 
+/**
+ * The Bank class stores bank data and operations on it
+ * 
+ * @author mat
+ *
+ */
 public class Bank {
 
 	final protected String id;
 	final protected InetSocketAddress udpAddress;
 	public HashMap<String, ThreadSafeHashMap<Integer, Account>> accounts;
 	public HashMap<String, ThreadSafeHashMap<Integer, Loan>> loans;
-
 	protected static int nextAccountNbr = 100;
 	protected static int nextLoanId = 1000;
 	
@@ -62,7 +67,7 @@ public class Bank {
 	 * @return
 	 */
 	public Boolean accountExists(int accountNbr) {
-		
+
 		for (String key : this.accounts.keySet()) {
 			ThreadSafeHashMap<Integer, Account> accountsByLetter = this.accounts.get(key);
 			for (Integer accountId : accountsByLetter.keySet()) {
@@ -113,7 +118,7 @@ public class Bank {
 		ThreadSafeHashMap<Integer, Account> accounts = this.accounts.get(firstLetter);
 		int newAccountNbr = 0;
 		
-		// TODO: Perform some field validation
+		// TODO: Perform some additional field validation
 
 		// Synchronize on the accounts list to get sightly better performance
 		synchronized (accounts) {
@@ -126,10 +131,9 @@ public class Bank {
 				}
 			}
 			
+			// Create the account and add it to memory
 			newAccountNbr = nextAccountNbr++;
 			Account newAccount = new Account(newAccountNbr, firstName, lastName, emailAddress, phoneNumber, password);
-			
-			// Create the account
 			accounts.put(newAccountNbr, newAccount);
 		}
 		
@@ -148,15 +152,17 @@ public class Bank {
 		
 		String firstLetter = emailAddress.substring(0, 1).toUpperCase();
 		ThreadSafeHashMap<Integer, Loan> loans = this.loans.get(firstLetter);
+	    int loanId = nextLoanId++;
 
+		// TODO: Refactor this darned Date class
 		Date now = new Date();
 		Calendar cal = Calendar.getInstance();
 	    cal.setTime(now);
 	    cal.add(Calendar.MONTH, 2);
 		
-	    int loanId = nextLoanId++;
 		Loan loan = new Loan(accountNbr, emailAddress, loanAmount, cal.getTime(), loanId);
 		loans.put(loanId, loan);
+		
 		return nextLoanId-1;
 	}
 
@@ -187,10 +193,12 @@ public class Bank {
 				return account;
 			}
 		}
+		
 		return null;
 	}
 
 	/**
+	 * Get a loan from its ID
 	 * 
 	 * @param id
 	 * @return
@@ -201,7 +209,7 @@ public class Bank {
 			ThreadSafeHashMap<Integer, Loan> loansByLetter = this.loans.get(firstLetter);
 			for (Integer loanId : loansByLetter.keySet()) {
 				Loan loan = loansByLetter.get(loanId);
-				if (loan.id == id) {
+				if (loan.getId() == id) {
 					return loan;
 				}
 			}
@@ -220,15 +228,17 @@ public class Bank {
 		
 		int result = 0;
 		Date date = Calendar.getInstance().getTime();
+		
 		for (String key : this.loans.keySet()) {
 			ThreadSafeHashMap<Integer, Loan> loansByLetter = this.loans.get(key);
 			for (Integer loanId : loansByLetter.keySet()) {
 				Loan loan = loansByLetter.get(loanId);
-				if (loan.accountNbr == accountNbr && date.before(loan.dueDate)) {
-					result += loan.amount;
+				if (loan.getAccountNbr() == accountNbr && date.before(loan.getDueDate())) {
+					result += loan.getAmount();
 				}
 			}
 		}
+		
 		return result;
 	}
 	
@@ -244,12 +254,14 @@ public class Bank {
 		ThreadSafeHashMap<Integer, Loan> loansByLetter = this.loans.get(firstLetter);
 		int result = 0;
 		Date now = Calendar.getInstance().getTime();
+		
 		for (Integer loanId : loansByLetter.keySet()) {
 			Loan loan = loansByLetter.get(loanId);
-			if (loan.emailAddress.equals(emailAddress) && now.before(loan.dueDate)) {
-				result += loan.amount;
+			if (loan.getEmailAddress().equals(emailAddress) && now.before(loan.getDueDate())) {
+				result += loan.getAmount();
 			}
 		}
+		
 		return result;
 	}
 	
